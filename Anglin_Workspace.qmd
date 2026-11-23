@@ -581,6 +581,8 @@ Print the ads to read them. This also saves the ads as a text file, `data/anglin
 ```{r}
 #| label: read-sample
 
+text_output <- character()   # an empty container for the ads
+
 for (i in seq_len(nrow(validation_sample))) {
   one_ad <- paste0("\n==========", validation_sample$id[i], "|",
                    validation_sample$publication_date[i],

@@ -1,0 +1,381 @@
+---
+title: "HIST 446 The Past as Data: Mapping the Railroad"
+subtitle: "Student: Makenzie Rojas"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    code-copy: true
+    embed-resources: true
+execute:
+  warning: false
+  cache: false
+---
+
+## Getting Started (Week 14)
+
+Mak,
+
+In your Method Selection, you chose the railroad story: how occupations in Smithfield changed after the Indianapolis and Bellefontaine Railroad reached Liberty Township in 1852. You also chose georeferencing and mapping, and you described a layered map you could toggle through.
+
+This file is a companion to your workspace. It adds two things:
+
+1.  **A layered, interactive map of Liberty Township**, built on historical maps from the Digital Media Repository (DMR) that you georeference in Allmaps, as we did with Muncie in Exercise 7. You'll be able to switch each layer on and off.
+2.  **A chart of Liberty Township's occupations from 1850 to 1880**, the railroad years, made from the tables your workspace already saves.
+
+By the time you push this back to GitHub, you will have a georeferenced 1887 map of Liberty Township, a map with the township, Smithfield, Selma and the railroad on it (`output/rojas/liberty-railroad-map.html`), and a chart of occupations before and after the railroad (`output/rojas/occupations-1850-1880.png`).
+
+Parts 1–5 don't need your census data. Part 6 needs the CSV files from Section 7 of your workspace, so run your workspace through Section 7 before you get there.
+
+### Why a map of the setting, and charts for the people
+
+As I mentioned on your Method Selection, the census doesn't record where anyone lived inside Liberty Township. Before 1880 it counted the township as one unit, with no addresses for rural households, and Smithfield was never counted apart from Selma and the farms around them. So we can't put the census's occupations on a map of Smithfield.
+
+What a map can show is the geography your argument depends on: where the railroad ran, how far it passed from Smithfield, where Selma grew up beside it, and where the river and the roads were. That's the "why" behind the trade moving north. The census, in turn, shows "what" changed in the township's work, and a chart is the best way to show that change. Your final project can pair the two: the map explains the setting, and the chart shows the change.
+
+### Your maps
+
+All of these are in the DMR's [Muncie and Delaware County Historic Maps and Atlases](https://dmr.bsu.edu/digital/collection/HistMaps) collection, and all are in the public domain.
+
+| Map | Date | What it shows | DMR link |
+|------------------|------------------|------------------|------------------|
+| *Liberty* (township page of the county atlas) | 1887 | The township with the railroad, Selma, Smithfield, the White River, roads, landowners, and a list of local businesses | [id 240](https://dmr.bsu.edu/digital/collection/HistMaps/id/240) |
+| *Selma, De Soto, and Smithfield* (atlas page) | 1887 | Village plats, lot by lot | [id 241](https://dmr.bsu.edu/digital/collection/HistMaps/id/241) |
+| *Delaware County, Indiana, 1874* | 1874 | The whole county, its townships, and its railroads, between your 1870 and 1880 censuses | [id 256](https://dmr.bsu.edu/digital/collection/HistMaps/id/256) |
+| *Liberty Township, Delaware County, Indiana, 1861* | 1861 | A hand-drawn grid of sections with landowners' names, nine years after the railroad | [id 300](https://dmr.bsu.edu/digital/collection/HistMaps/id/300) |
+| *Georgetown and Smithfield, circa 1838–1844* | c\. 1840 | The original plat of Smithfield | [id 348](https://dmr.bsu.edu/digital/collection/HistMaps/id/348) |
+| *Selma, Indiana, 1864* | 1864 | The plat of Selma, with Rail Road Street | [id 302](https://dmr.bsu.edu/digital/collection/HistMaps/id/302) |
+
+The 1887 atlas page is the easiest to georeference and the richest, so it's the base of your map. It was drawn a little after your period, so treat it as the landscape the railroad left behind. The 1861 and 1874 maps are within your period; Part 7 below suggests how to use them.
+
+## 0. Your project folders
+
+This file uses the same folders as your workspace:
+
+- **`data/rojas/`**: your datasets. This file reads two CSV files that your workspace file saved there, and saves one new one, `places.csv`.
+- **`output/rojas/`**: your map and chart.
+
+`data/rojas/ipums/` stays off GitHub, as before. The maps and charts in `output/rojas/` can be committed: the historical maps are public domain, and the chart shows percentages, not individual records.
+
+## 1. Packages and settings
+
+You installed `sf`, `tigris` and `leaflet` for Exercise 7, so there's nothing new to install.
+
+```{r}
+#| label: setup
+
+library(tidyverse)
+library(sf)        # maps as tables
+library(tigris)    # Census Bureau map layers
+library(leaflet)   # interactive maps
+
+options(tigris_use_cache = TRUE)   # keep downloaded layers on your computer
+
+# ---- settings ----
+datadir <- "data/rojas"     # your datasets
+outdir  <- "output/rojas"   # your charts and maps
+
+dir.create(datadir, recursive = TRUE, showWarnings = FALSE)
+dir.create(outdir,  recursive = TRUE, showWarnings = FALSE)
+```
+
+## 2. Read the maps before you map
+
+A historical map is a source, so close-read it before you georeference it. Open the 1887 Liberty page ([id 240](https://dmr.bsu.edu/digital/collection/HistMaps/id/240)) and the 1861 township map ([id 300](https://dmr.bsu.edu/digital/collection/HistMaps/id/300)) in the DMR, zoom in, and answer:
+
+1.  On the 1887 map, follow the railroad across the township. How far does it pass from Smithfield? Which roads connect Smithfield to Selma?
+
+> 
+
+2.  Read the "Liberty Township Business References" at the top of the 1887 page. Which businesses are in Selma, and which in Smithfield? What does that list suggest about where trade had moved by 1887?
+
+> 
+
+3.  On the 1861 map, find the sections the railroad crosses (use the 1887 map as a guide: both use the same grid of numbered sections). Who owned land along the line nine years after it arrived?
+
+> 
+
+4.  Who made each map, and for whom? (The 1887 atlas has a "List of Patrons": who were they? The 1861 map is hand-drawn, and its DMR record doesn't say who made it or why.) What would each mapmaker leave out?
+
+> 
+
+## 3. Georeference the 1887 Liberty map in Allmaps
+
+We did this together in Exercise 7. This time you'll georeference the whole map yourself.
+
+1.  Go to [editor.allmaps.org](https://editor.allmaps.org), paste this link, and click **Load**: `https://dmr.bsu.edu/iiif/info/HistMaps/240/manifest.json`
+2.  In the **Georeference** tab, add **control points**: click a spot on the 1887 map, then click the same spot on today's map.
+    - Use **road intersections** that still exist. Many roads in Liberty Township follow the section lines of the 1887 map's grid, so section corners where two roads meet are good choices.
+    - Add at least **6 points**, spread across the whole township: the four corners and the middle. Points bunched in one place will stretch the rest of the map.
+    - Don't use the river: rivers move. Avoid the villages too, since their streets may have changed.
+3.  In the **Mask** tab, draw a shape around the map itself, so the title, the business list and the page margins don't get laid over the landscape.
+4.  Open the **Results** view (or the share/export tools) and copy the **XYZ tile URL**. It looks like `https://allmaps.xyz/...{z}/{x}/{y}.png`. Paste it below into `liberty_1887_tiles`.
+5.  Also copy the **Georeference Annotation** URL into `liberty_1887_annotation`. It's the record of your control points, so you or anyone else can check your work later.
+
+```{r}
+#| label: map-settings
+
+# From Allmaps, Part 3
+liberty_1887_tiles      <- "REPLACE-ME"   # the XYZ tile URL of your georeferenced 1887 Liberty map
+liberty_1887_annotation <- "REPLACE-ME"   # the Georeference Annotation URL (your record)
+
+# Optional: a second georeferenced map (see Part 7), e.g. the 1874 county map
+second_map_tiles <- "REPLACE-ME"
+second_map_name  <- "Delaware County, 1874"
+
+# the logic below checks whether you georeferenced the 1887 map and/or an optional second map for Part 7
+has_1887   <- liberty_1887_tiles != "REPLACE-ME"
+has_second <- second_map_tiles != "REPLACE-ME"
+```
+
+Open your georeferenced map in [Allmaps Viewer](https://viewer.allmaps.org) (paste the annotation URL) and turn the map's transparency up and down. Does the 1887 map line up well with today's roads? If not, why?
+
+> 
+
+## 4. Places: the villages and the railroad
+
+Now mark the places your argument is about. Find each one on your georeferenced map, then find the same spot on [Google Maps](https://maps.google.com): right-click it, and click the two numbers at the top of the menu to copy them. The first is the **latitude**, the second the **longitude**. (In Indiana, the longitude is negative.)
+
+- **Villages**: the center of Smithfield and the center of Selma, plus anything else you want to mark (the Selma depot, a mill, a church).
+- **Railroad**: points along the line, in order from west to east, wherever the 1887 railroad crosses a road that still exists. Five or six points are enough to draw it across the township.
+
+Leave a row as `NA` until you've found it. Rows with `NA` are skipped.
+
+```{r}
+#| label: places
+
+villages <- tribble(
+  ~place,       ~lat, ~lng, ~note,
+  "Smithfield", NA,   NA,   "River village on the White River",
+  "Selma",      NA,   NA,   "Platted 1852, beside the new railroad"
+)
+
+# points along the railroad, west to east
+railroad_points <- tribble(
+  ~point, ~lat, ~lng,
+  1,      NA,   NA,
+  2,      NA,   NA,
+  3,      NA,   NA,
+  4,      NA,   NA,
+  5,      NA,   NA
+)
+
+# remove NAs 
+villages <- villages %>% 
+  filter(!is.na(lat), !is.na(lng)) 
+
+# remove NAs
+railroad_points <- railroad_points %>% 
+  filter(!is.na(lat), !is.na(lng)) %>% 
+  arrange(point)
+
+# save villages
+write_csv(villages, file.path(datadir, "places.csv"))
+
+# the logic below checks whether you've filled in coordinates
+has_villages <- nrow(villages) > 0
+has_railroad <- nrow(railroad_points) >= 2   
+# a line needs at least two points
+
+villages
+```
+
+Measure the distance between Smithfield and the railroad on Google Maps (right-click, **Measure distance**). In your Historical Context, you wrote that the railroad drew trade about a mile and a half north, to Selma. Does the map agree?
+
+> 
+
+## 5. Liberty Township's boundary
+
+The `tigris` package downloads today's township boundaries from the Census Bureau, as it did for Muncie in Exercise 7. In Indiana, townships are "county subdivisions."
+
+```{r}
+#| label: township
+
+townships <- county_subdivisions(state = "IN", county = "Delaware", cb = TRUE) %>%
+  st_transform(4326)   # the coordinates leaflet uses
+
+liberty_township <- townships %>% filter(NAME == "Liberty")
+
+townships %>% st_drop_geometry() %>% select(NAME)   # Delaware County's townships today
+```
+
+This is today's boundary. Compare it with the 1874 county map ([id 256](https://dmr.bsu.edu/digital/collection/HistMaps/id/256)) or the 1887 atlas: did Liberty Township have the same shape in your period? If it didn't, remember to say so in your visualization caption.
+
+> 
+
+## 6. The layered map
+
+This map puts it all together. Inside leaflet functions, a `~` in front of a column name means "take this from the table," as in Exercise 7. The layer control in the top-right corner switches each layer on and off.
+
+If your workspace has saved `occupation-groups-liberty.csv`, the township's popup also shows the share of farmers and laborers in 1850 and 1880.
+
+```{r}
+#| label: layered-map
+
+groups_file <- file.path(datadir, "occupation-groups-liberty.csv")
+
+# the township popup: a short summary from your census data, if it's there
+township_popup <- "<b>Liberty Township</b><br>Today's boundary (Census Bureau)."
+if (file.exists(groups_file)) {
+  summary_rows <- read_csv(groups_file, show_col_types = FALSE) %>%
+    filter(year %in% c(1850, 1880), group %in% c("farming", "labor", "railroad", "trade")) %>%
+    arrange(group, year)
+  summary_text <- paste0(summary_rows$group, ", ", summary_rows$year, ": ",
+                         summary_rows$percent, "%", collapse = "<br>")
+  township_popup <- paste0(township_popup, "<br><br>Share of people with an occupation:<br>", summary_text)
+}
+
+overlays <- c("Township boundary")   # the layers the control will list
+
+liberty_map <- leaflet() %>%
+  addProviderTiles(providers$Esri.WorldGrayCanvas, group = "Today") %>%
+  addPolygons(data = liberty_township, group = "Township boundary",
+              color = "black", weight = 2, fill = FALSE,
+              popup = township_popup)
+
+if (has_1887) {
+  liberty_map <- liberty_map %>%
+    addTiles(urlTemplate = liberty_1887_tiles, group = "Liberty Township, 1887",
+             options = tileOptions(opacity = 0.8),
+             attribution = "Liberty Township, An Atlas of Delaware County, Indiana (1887). Ball State University Libraries, DMR. Georeferenced with Allmaps.")
+  overlays <- c(overlays, "Liberty Township, 1887")
+}
+
+if (has_second) {
+  liberty_map <- liberty_map %>%
+    addTiles(urlTemplate = second_map_tiles, group = second_map_name,
+             options = tileOptions(opacity = 0.8),
+             attribution = paste0(second_map_name, ". Ball State University Libraries, DMR. Georeferenced with Allmaps."))
+  overlays <- c(overlays, second_map_name)
+}
+
+if (has_railroad) {
+  liberty_map <- liberty_map %>%
+    addPolylines(data = railroad_points, lng = ~lng, lat = ~lat,
+                 group = "Railroad (traced from 1887)", color = "#8B0000", weight = 4,
+                 popup = "Indianapolis and Bellefontaine Railroad (1852), traced from the 1887 atlas")
+  overlays <- c(overlays, "Railroad (traced from 1887)")
+}
+
+if (has_villages) {
+  liberty_map <- liberty_map %>%
+    addCircleMarkers(data = villages, lng = ~lng, lat = ~lat,
+                     group = "Villages", radius = 7, color = "#1B4F72", fillOpacity = 0.9, stroke = FALSE,
+                     label = ~place,
+                     popup = ~paste0("<b>", place, "</b><br>", note))
+  overlays <- c(overlays, "Villages")
+}
+
+liberty_map <- liberty_map %>%
+  addLayersControl(baseGroups = "Today", overlayGroups = overlays,
+                   options = layersControlOptions(collapsed = FALSE))
+
+liberty_map
+```
+
+```{r}
+#| label: save-map
+
+htmlwidgets::saveWidget(liberty_map, file.path(outdir, "liberty-railroad-map.html"))
+unlink(file.path(outdir, "liberty-railroad-map_files"), recursive = TRUE)   # tidy up a helper folder saveWidget leaves behind
+```
+
+## 7. Occupations before and after the railroad, 1850–1880
+
+This part reads the table your workspace saved in Section 7 (`occupation-groups-liberty.csv`) and keeps only the railroad years. The 1850 census was taken in June 1850, two years before the railroad, so it shows the moment before. 1860, 1870 and 1880 shows the after.
+
+```{r}
+#| label: read-groups
+
+has_groups <- file.exists(groups_file)
+
+my_groups <- c("farming", "labor", "railroad", "trade", "crafts")   # the groups your argument is about
+
+if (has_groups) {
+  railroad_years <- read_csv(groups_file, show_col_types = FALSE) %>%
+    filter(year <= 1880)
+} else {
+  message("Run your workspace through Section 7 first: ", groups_file, " doesn't exist yet.")
+}
+```
+
+`my_groups` above lists the groups to chart. Your workspace's groups are your categories, so if you've renamed or added any there, use your names in `my_groups` and run both chunks again.
+
+```{r}
+#| label: occupations-chart
+#| eval: !expr file.exists("data/rojas/occupation-groups-liberty.csv")
+#| fig-width: 9
+#| fig-height: 5
+
+occupations_chart <- railroad_years %>%
+  filter(group %in% my_groups) %>%
+  ggplot(aes(x = year, y = percent, color = group)) +
+  geom_vline(xintercept = 1852, linetype = "dashed", color = "grey50") +
+  annotate("text", x = 1852, y = Inf, label = "Railroad reaches Liberty Township; Selma platted (1852)",
+           angle = 90, hjust = 1.05, vjust = -0.5, size = 3, color = "grey40") +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = c(1850, 1860, 1870, 1880)) +
+  labs(title = "REPLACE-ME: your claim, as a sentence",
+       subtitle = "Liberty Township, Delaware County, Indiana. Percent of people with an occupation, by census.",
+       x = NULL, y = "Percent", color = "Group",
+       caption = "Source: U.S. census full count, 1850-1880, IPUMS USA. Groups are my own, built from IPUMS's OCC1950 and IND1950 codes.") +
+  theme_minimal()
+
+occupations_chart
+ggsave(file.path(outdir, "occupations-1850-1880.png"), occupations_chart, width = 9, height = 5, bg = "white")
+```
+
+Replace the title with your claim, as Chambers does: what does the chart show about the railroad years? Then read the chart against two things:
+
+- **The 1850 census only asked about men.** In 1850, an occupation was recorded only for men over 15. From 1860 on, the census asked for the occupation of every person over 15, women included. So part of any change between 1850 and 1860 may come from who was asked, not from what people did. Check your workspace's `who-worked.csv`: how many women have an occupation listed in 1860?
+- **The township is not the village.** Selma grew beside the railroad, so a rise in trade or railroad work in Liberty Township may be Selma's, not Smithfield's.
+
+> 
+
+### Was Liberty Township different from the county?
+
+Your workspace also saved `occupation-groups-comparison.csv`. If the whole county changed the same way, the railroad through Liberty Township may not be the reason.
+
+```{r}
+#| label: county-chart
+#| eval: !expr file.exists("data/rojas/occupation-groups-comparison.csv")
+#| fig-width: 9
+#| fig-height: 5
+
+comparison_1850_1880 <- read_csv(file.path(datadir, "occupation-groups-comparison.csv"), show_col_types = FALSE) %>%
+  filter(year <= 1880, group %in% my_groups)
+
+ggplot(comparison_1850_1880, aes(x = year, y = percent, color = place)) +
+  geom_vline(xintercept = 1852, linetype = "dashed", color = "grey50") +
+  geom_line() +
+  geom_point() +
+  facet_wrap(vars(group), scales = "free_y") +
+  scale_x_continuous(breaks = c(1850, 1860, 1870, 1880)) +
+  labs(title = "Liberty Township compared with Delaware County, 1850-1880",
+       x = NULL, y = "Percent of people with an occupation", color = NULL) +
+  theme_minimal()
+```
+
+Each panel has its own vertical scale (`scales = "free_y"`), so you can't compare the heights across panels, but compare the two lines within each panel.
+
+> 
+
+## 8. Optional: more layers
+
+If you have time and want to, georeference a second map and paste its tile URL into `second_map_tiles` in Part 3:
+
+- **The 1874 county map** ([manifest](https://dmr.bsu.edu/iiif/info/HistMaps/256/manifest.json)) shows the railroads across the whole county between your 1870 and 1880 censuses. Use township corners and road intersections as control points.
+- **The 1861 Liberty Township map** ([manifest](https://dmr.bsu.edu/iiif/info/HistMaps/300/manifest.json)) is a grid of sections with landowners' names. Use the section corners as control points: they're where the roads on today's map cross. Laid over today's map, it shows who owned the land along the railroad nine years after it arrived.
+
+To show both in the same map, copy the `has_second` lines in Part 3 and the `if (has_second)` block in Part 6, and give the copy new names. For example, `has_third`.
+
+## 9. Thinking like a historian about this map
+
+- **A map is a source with an author and a purpose.** The 1887 atlas was sold to subscribers, and its business list and landowners' names show who paid to be on it. It's important to know whose landscape it shows.
+- **The 1887 map is after your period.** Remember that it shows what the railroad left behind 35 years later, not the township of 1852.
+- **Georeferencing bends the map.** Allmaps stretches the scan to fit your control points. Where your points are sparse, the map can drift. Report how many points you used and where the fit was worst.
+- **The boundary is today's.** Check it against an old map before you use it to say anything about the 1800s.
+- **The map shows the setting, and the census shows the change.** Your argument uses both and your newspapers and close reading connect them.
+
+\[ \] **Commit** this `.qmd` file, `data/rojas/places.csv`, and `output/rojas/`. Make sure `data/rojas/ipums/` is not included.

@@ -1,0 +1,237 @@
+---
+title: "HIST 446 The Past as Data: Mapping Ball State's World"
+subtitle: "Student: Jordan Huneryager"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    code-copy: true
+    embed-resources: true
+execute:
+  warning: false
+  cache: false
+---
+
+## Getting Started (November 18, 2026)
+
+Jordan,
+
+In your Method Selection, you chose mapping, and you imagined a map of the parts of the world Ball State taught about. This file is a companion to your workspace that makes that map. It doesn't replace your workspace, and it's **optional**: finish your Data Visualization & Preliminary Analysis (due November 23) from your workspace first, then come back here.
+
+This file downloads nothing. It reads two tables your workspace already saves:
+
+-   `news-region-share.csv` (Section 5): how many of each year's *Daily News* headlines name each region.
+-   `course-region-share.csv` (Section 11): how many of each catalog's course titles name each region.
+
+It turns them into **world maps, one for each decade, for the news and for the catalogs**, so you can see which parts of the world filled Ball State's news and its curriculum in the 1970s, 1980s and 1990s, and where the two differ.
+
+By the time you push this back to GitHub, you will have a table that assigns countries to your regions (`data/huneryager/country-regions.csv`) and a map (`output/huneryager/world-by-decade.png`).
+
+### What a map adds, and what it hides
+
+Your side-by-side chart in Section 12 of the workspace shows **when** each region rose and fell. A map shows **which parts of the world** Ball State's news and courses paid attention to, all at once, and which they left blank. That's the spatial version of your question.
+
+But a map of your data also distorts it, in three ways you should say in your caption:
+
+1.  **Your regions aren't places on a map until you decide which countries belong to them.** That decision is yours, and it's an argument (Part 3).
+2.  **Big countries look important.** Russia, Canada, Brazil and Australia take up a lot of the map whatever their numbers are. Read the colors, not the areas.
+3.  **The borders are today's.** The map uses current countries, so there's no Soviet Union, no Yugoslavia, and one Germany. Your 1970s and 1980s sources describe a different map.
+
+## 0. Your project folders
+
+This file uses the same folders as your workspace: it reads from `data/huneryager/` and saves to `output/huneryager/`. Both new files are small and can be committed. `data/huneryager/catalogs/` and `data/huneryager/dailynews/` stay off GitHub, as before.
+
+## 1. One-time installation
+
+`ggplot2` draws world maps with the help of the `maps` package. Run this once, in your **console**, if you haven't installed it before:
+
+``` r
+install.packages("maps")
+```
+
+```{r}
+#| label: setup
+
+library(tidyverse)
+
+# ---- settings ----
+datadir <- "data/huneryager"     # your datasets
+outdir  <- "output/huneryager"   # your charts and writing
+
+news_file   <- file.path(datadir, "news-region-share.csv")     # from your workspace, Section 5
+course_file <- file.path(datadir, "course-region-share.csv")   # from your workspace, Section 11
+
+has_shares <- file.exists(news_file) && file.exists(course_file)
+
+dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
+
+has_shares
+```
+
+`has_shares` should say `TRUE`. If it says `FALSE`, run your workspace through Section 11 first.
+
+## 2. Read your shares and group them by decade
+
+A map for every year would be thirty maps. Instead, group the years into decades. Each catalog is named for its first year (the 1970–72 catalog is 1970), so it falls in the decade of that year.
+
+```{r}
+#| label: read-shares
+#| eval: !expr has_shares
+
+news   <- read_csv(news_file, show_col_types = FALSE)
+course <- read_csv(course_file, show_col_types = FALSE)
+
+region_counts <- bind_rows(
+  news   %>% transmute(source = "Daily News headlines", year, region, n),
+  course %>% transmute(source = "Catalog course titles", year = catalog_year, region, n)
+) %>%
+  filter(region != "International & global") %>%   # not a place, so it can't go on a map
+  mutate(decade = paste0(floor(year / 10) * 10, "s"))
+
+region_counts %>% count(source, decade, name = "rows")
+```
+
+### Shares of the mentions, not of everything
+
+Headlines and courses are very different in number: tens of thousands of headlines a decade, a few hundred region courses. So the map doesn't compare raw counts. For each source and decade, it asks: **of all the mentions of a world region, what share went to each region?** Each source's shares add up to 100% in each decade, so the news and the curriculum can be compared on the same color scale.
+
+A headline that names two regions counts once for each. That's why these are shares of **mentions**, not of headlines.
+
+```{r}
+#| label: mention-shares
+#| eval: !expr has_shares
+
+mention_shares <- region_counts %>%
+  group_by(source, decade, region) %>%
+  summarize(mentions = sum(n), .groups = "drop") %>%
+  group_by(source, decade) %>%
+  mutate(share = round(100 * mentions / sum(mentions), 1)) %>%
+  ungroup()
+
+mention_shares %>%
+  select(source, decade, region, share) %>%
+  pivot_wider(names_from = decade, values_from = share) %>%
+  arrange(region, source)
+```
+
+Read this table before you map it. Which regions have a bigger share of the curriculum than of the news? Which have a bigger share of the news than of the curriculum?
+
+>
+
+## 3. Assign countries to your regions
+
+This is the step that turns your categories into places. The table below is a **starting list**, built from the names in your region patterns (workspace, Section 2) plus the countries around them. Change it: it's your argument.
+
+A few decisions are already made, so check them:
+
+-   **Turkey and Cyprus** are in the Middle East here, although your patterns don't name them.
+-   **Greece** is in Western Europe, although it isn't in your Western Europe pattern.
+-   **Sudan** is in Africa, as in your patterns. Egypt and Libya are in the Middle East & N. Africa, as in your patterns.
+-   **The United States and Canada** are left out, because your regions are about the rest of the world. They'll show in grey.
+
+Country names have to match the map's spelling: for example, `UK`, `Czech Republic`, `Democratic Republic of the Congo`, `Ivory Coast`, `Swaziland`.
+
+```{r}
+#| label: country-regions
+
+country_regions <- tribble(
+  ~region, ~countries,
+  "Western Europe", "UK, Ireland, France, Germany, Italy, Spain, Portugal, Belgium, Netherlands, Luxembourg, Switzerland, Austria, Denmark, Norway, Sweden, Finland, Iceland, Greece",
+  "Soviet Union & E. Europe", "Russia, Ukraine, Belarus, Moldova, Estonia, Latvia, Lithuania, Georgia, Armenia, Azerbaijan, Kazakhstan, Uzbekistan, Turkmenistan, Kyrgyzstan, Tajikistan, Poland, Czech Republic, Slovakia, Hungary, Romania, Bulgaria, Serbia, Croatia, Slovenia, Bosnia and Herzegovina, Montenegro, North Macedonia, Kosovo, Albania",
+  "Middle East & N. Africa", "Israel, Palestine, Lebanon, Syria, Jordan, Iraq, Iran, Kuwait, Saudi Arabia, Yemen, Oman, United Arab Emirates, Qatar, Bahrain, Egypt, Libya, Tunisia, Algeria, Morocco, Western Sahara, Turkey, Cyprus",
+  "East Asia", "China, Taiwan, Japan, North Korea, South Korea, Mongolia",
+  "South & Southeast Asia", "India, Pakistan, Afghanistan, Bangladesh, Sri Lanka, Nepal, Bhutan, Myanmar, Thailand, Laos, Cambodia, Vietnam, Malaysia, Singapore, Indonesia, Philippines, Brunei, Timor-Leste",
+  "Africa", "Nigeria, Kenya, Ethiopia, Eritrea, Somalia, Sudan, South Sudan, Ghana, Democratic Republic of the Congo, Republic of Congo, South Africa, Zimbabwe, Zambia, Mozambique, Angola, Namibia, Botswana, Tanzania, Uganda, Rwanda, Burundi, Malawi, Madagascar, Cameroon, Chad, Niger, Mali, Mauritania, Senegal, Gambia, Guinea, Guinea-Bissau, Sierra Leone, Liberia, Ivory Coast, Burkina Faso, Togo, Benin, Central African Republic, Gabon, Equatorial Guinea, Lesotho, Swaziland, Djibouti",
+  "Latin America", "Mexico, Guatemala, Belize, Honduras, El Salvador, Nicaragua, Costa Rica, Panama, Cuba, Haiti, Dominican Republic, Jamaica, Puerto Rico, Bahamas, Trinidad, Grenada, Barbados, Colombia, Venezuela, Ecuador, Peru, Bolivia, Brazil, Paraguay, Uruguay, Argentina, Chile, Guyana, Suriname, French Guiana",
+  "Oceania", "Australia, New Zealand, Papua New Guinea, Fiji, Solomon Islands, Vanuatu, Samoa, Tonga, New Caledonia"
+) %>%
+  separate_rows(countries, sep = ", ") %>%   # one row per country
+  rename(country = countries)
+
+write_csv(country_regions, file.path(datadir, "country-regions.csv"))
+
+country_regions %>% count(region)
+```
+
+Check your spelling against the map. Any name listed here is one the map doesn't know, so it won't get a color:
+
+```{r}
+#| label: check-names
+
+world <- map_data("world") %>%
+  rename(country = region) %>%          # map_data calls countries "region"; we use "region" for yours
+  filter(country != "Antarctica")
+
+country_regions %>% filter(!(country %in% world$country))
+```
+
+And these are the countries you haven't assigned. Most are small islands and territories; check that any larger country on the list (the United States, Canada, Greenland) is left out on purpose.
+
+```{r}
+#| label: unassigned
+
+world %>%
+  distinct(country) %>%
+  filter(!(country %in% country_regions$country)) %>%
+  pull(country)
+```
+
+## 4. The maps
+
+Each map is one source in one decade. The darker a region, the larger its share of that source's mentions in that decade. Grey countries aren't in any of your regions.
+
+```{r}
+#| label: world-maps
+#| eval: !expr has_shares
+#| fig-width: 12
+#| fig-height: 5
+
+# every country, once for each source and decade
+panels <- mention_shares %>% distinct(source, decade)
+
+map_data_by_panel <- world %>%
+  left_join(country_regions, by = "country") %>%
+  cross_join(panels) %>%
+  left_join(mention_shares, by = c("source", "decade", "region")) %>%
+  mutate(source = factor(source, levels = c("Daily News headlines", "Catalog course titles")))   # news on top
+
+world_map <- ggplot(map_data_by_panel, aes(x = long, y = lat, group = group, fill = share)) +
+  geom_polygon(color = "white", linewidth = 0.05) +
+  facet_grid(source ~ decade) +
+  coord_quickmap() +
+  scale_fill_gradient(low = "#DCE6F0", high = "#08306B", na.value = "grey85",
+                      name = "Share of\nregion mentions (%)") +
+  labs(title = "REPLACE-ME: your claim, as a sentence",
+       subtitle = "Share of each source's world-region mentions, by decade. Today's borders.",
+       caption = "Sources: Ball State Daily News headlines and Ball State undergraduate catalogs, 1970-1999, Digital Media Repository.") +
+  theme_void() +
+  theme(legend.position = "bottom")
+
+world_map
+ggsave(file.path(outdir, "world-by-decade.png"), world_map, width = 12, height = 5, bg = "white")
+```
+
+Replace the title with your claim, as Chambers does: what does this map show about the news and the curriculum?
+
+## Your turn
+
+1.  Compare the two rows. Which regions are darker in the news than in the curriculum? Which are darker in the curriculum than in the news? What might explain each difference?
+
+>
+
+2.  Compare the decades. Does any region darken in the news first and in the curriculum later? How does that compare with your side-by-side chart in Section 12 of your workspace?
+
+>
+
+3.  Move one decision in Part 3: for example, put Turkey in Western Europe, or Afghanistan in the Middle East. Run Parts 3 and 4 again. Does your answer to question 1 change?
+
+>
+
+## Thinking like a historian about this map
+
+-   **The map shows mentions, not attention.** A region named in a course title may be the subject of the whole course; a region named in a headline may be one line of wire copy. The map treats both as one mention.
+-   **Your country list is a mental map.** Where "the Middle East" or "Eastern Europe" ends was itself contested in these decades, and it changed after 1989. Say which version your map uses.
+-   **Today's borders aren't your sources' borders.** In the 1970s and 1980s, your sources wrote about the Soviet Union, Yugoslavia, East and West Germany, and Rhodesia. Mention this in your caption.
+-   **Grey is a finding too.** The parts of the world that neither source names are part of your answer about what Ball State taught and read.
+
+\[ \] **Commit** this `.qmd` file, `data/huneryager/country-regions.csv`, and `output/huneryager/world-by-decade.png`.

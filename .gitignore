@@ -21,6 +21,8 @@ data/huneryager/catalog-lines.csv
 data/matney/images/
 data/matney/batches/
 data/matney/fulltext/
+# Ramon: oral-history transcripts (In Copyright) and the full MGG download
+data/ramon/raw/
 # Rojas: IPUMS can't be redistributed
 data/rojas/ipums/
 # Tan: private notes

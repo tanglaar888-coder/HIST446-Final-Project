@@ -1,0 +1,765 @@
+---
+title: "HIST 446 The Past as Data: Final Project Workspace"
+subtitle: "Student: Brianna Ramon"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    code-copy: true
+    embed-resources: true
+execute:
+  warning: false
+  cache: false
+---
+
+## Getting Started (November 22, 2026)
+
+Brianna,
+
+As we talked about, this workspace will get you started on a final project that compares the **remembered** queer landscape of Muncie with the **advertised** gay landscape of Muncie in *Mapping the Gay Guides* (MGG). You'll work with two sources:
+
+-   **The Muncie LGBTQ+ Oral History Project**: interviews recorded in 2020 and 2021 with members of Muncie's LGBTQ+ community, held in Ball State's Digital Media Repository (DMR). This is the remembered landscape: the places people talk about when they tell their own stories.
+-   **Mapping the Gay Guides**: every listing from Bob Damron's *Address Book*, a travel guide for gay men, from 1965 to 2003, transcribed and mapped by historians Amanda Regan and Eric Gonzaba. This is the advertised landscape: the places a guide printed for travelers passing through Muncie.
+
+The question this workspace sets up: **Which places made up queer Muncie in the guide, and which in the memories of the people who lived there? Where do the two overlap, and what does each one leave out?**
+
+By the time you push this back to GitHub, you will have:
+
+1.  **The advertised landscape**: every Muncie listing in the guides, with a chart of how the listings changed from 1965 to 2003, and a timeline of how long each place lasted.
+2.  **The remembered landscape**: a count of the places each narrator talks about, from a list of places you control.
+3.  **A comparison** of places only the guide listed, places only the narrators remember, and places in both.
+4.  **Passages** where narrators talk about a place, to read closely, with the years they're remembering.
+5.  **A map** with both landscapes as layers you can switch on and off.
+
+Read the explanation before you run each chunk. The steps run in order, so each chunk needs the ones before it.
+
+### Your sources
+
+| Source | What it is | How you get it |
+|----|----|----|
+| [Muncie LGBTQ+ Oral History Project](https://dmr.bsu.edu/digital/collection/MuncieLGBTQOH), Ball State University Libraries, Digital Media Repository | 19 interviews (2020–2021). 17 have a full transcript; 2 are video only. | I'll share `oral-histories.csv` with you privately (see "How the data was acquired") |
+| [Mapping the Gay Guides](https://www.mappingthegayguides.org), data on [GitHub](https://github.com/MappingtheGayGuides/MGG-Data) | 181,742 listings from the Damron *Address Book*, 1965–2003, with addresses, categories, and coordinates. 135 are in Muncie. | Downloaded by this workspace in Section 5 |
+| Regan and Gonzaba, "[Methodology](https://www.mappingthegayguides.org/methodology/)," *Mapping the Gay Guides* | How the guides were transcribed and geocoded, and what the categories mean | Read before Section 5 |
+
+### How the data was acquired
+
+**The oral histories.** The DMR runs on CONTENTdm, which has an **API**: a web address that returns data instead of a web page. On November 22, I asked it for the collection's list of items (`dmQuery`), then for each item's record (`dmGetItemInfo`). Each record has the interview's metadata and, in a field called "Full Text," the complete transcript. I saved one row per interview in `oral-histories.csv`: the interviewee, the interviewer, the date, the running time, the subject headings, a link to the item, and the transcript (`full`). Two interviews (Daniel Klingler and Tammy Mills) are video only and have no transcript, so the file has 17 rows. The code is in Section 3, so you can see how it works and run it again if you ever need to.
+
+**The gay guides.** The MGG team publishes its complete dataset on GitHub as one CSV file, `data.csv` (about 46 MB). Section 5 downloads it once, saves a copy, and keeps the Muncie listings. Read the project's methodology: each row is one listing in one year's guide, so a bar listed for 20 years has 20 rows.
+
+::: callout-warning
+## Cautions before you start
+
+**These are real people, and the interviews are in copyright.** The narrators are living members of a small community, talking about coming out, family, faith, and gender identity. The DMR marks every interview "In Copyright." So:
+
+-   The transcripts, and any file with passages from them, stay **off GitHub**. They live in `data/ramon/raw/`, which the class `.gitignore` keeps off GitHub. Your counts and charts can be committed, because they contain no transcript text.
+-   In your writing, quote **short passages**, cite the interview (narrator, interviewer, date, DMR link), and quote only what serves your argument.
+-   **Never map a private home**, even if a narrator gives an address. Your map shows businesses, churches, organizations and public places only.
+
+**The guide's language and point of view.** Bob Damron was a San Francisco businessman, and his guide was written for gay men traveling for pleasure. It used coded categories and labels that can be offensive today. Its view of Muncie is an outsider's: what a traveler needed to know, not what local people needed. Quote its words as evidence, in quotation marks, and say whose words they are.
+
+**Cruising areas.** About a quarter of the Muncie listings are cruising areas (a park, a rest stop, a campus building). Treat them as the guide's claims about public space, not as facts about individuals, and present them with care.
+
+**Different times.** The guides cover 1965–2003. The interviews were recorded in 2020–2021, and narrators remember different decades: some talk about the 1970s, some about last year. Section 9 helps you see which years each memory is about.
+
+**Small numbers.** The guide lists 3 to 6 Muncie places a year, and there are 17 interviews. That's enough for a careful comparison and close reading, not for statistics.
+:::
+
+## 0. Your project folders
+
+Your work lives in two folders named after you:
+
+-   **`data/ramon/`** holds your datasets.
+    -   **`data/ramon/raw/`** holds the oral histories and the full gay-guides download. **It stays off GitHub.**
+    -   The CSV files directly in `data/ramon/` (your place list, your counts, the Muncie listings) can be committed.
+-   **`output/ramon/`** holds your charts, your map, and your writing.
+
+```
+HIST446-Final-Project/
+├── HIST446-Final-Project.Rproj ← open this first
+├── Ramon_Workspace.qmd         ← this file
+├── data/
+│   └── ramon/
+│       ├── raw/                ← oral-histories.csv and mgg-data.csv (NOT committed)
+│       └── *.csv               ← your place list, counts, and Muncie listings
+└── output/
+    └── ramon/                  ← your charts and map
+```
+
+Put `oral-histories.csv` in `data/ramon/raw/` before you start.
+
+## 1. One-time installation
+
+You only need to run this chunk once. It is set to `eval: false` so it won't run every time you render the document.
+
+```{r}
+#| label: install
+#| eval: false
+
+install.packages(c(
+  "tidyverse",    # reading, cleaning, counting, charts
+  "leaflet",      # the interactive map (Exercise 7)
+  "tidygeocoder", # coordinates for place names
+  "httr",         # the DMR API, only if you rerun Section 3
+  "jsonlite"
+))
+```
+
+## 2. Load packages and settings
+
+If you're returning to this file at a later time, start here.
+
+```{r}
+#| label: setup
+
+library(tidyverse)
+library(leaflet)
+library(tidygeocoder)
+
+# ---- settings ----
+datadir <- "data/ramon"                  # your datasets
+rawdir  <- file.path(datadir, "raw")     # the oral histories and the full guide data (NOT committed)
+outdir  <- "output/ramon"                # your charts and map
+
+oral_file <- file.path(rawdir, "oral-histories.csv")   # from me, shared privately
+mgg_file  <- file.path(rawdir, "mgg-data.csv")         # downloaded in Section 5
+mgg_url   <- "https://raw.githubusercontent.com/MappingtheGayGuides/MGG-Data/master/data.csv"
+
+dir.create(rawdir, recursive = TRUE, showWarnings = FALSE)
+dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
+
+file.exists(oral_file)   # should say TRUE
+```
+
+## 3. The oral histories
+
+This is the code I used to download the oral histories. You **don't need to run it**: it's here so you can see how the data was made, and run it again if you ever need to. It's set to `eval: false`.
+
+```{r}
+#| label: download-oral-histories
+#| eval: false
+
+library(httr)
+library(jsonlite)
+
+dmr_api <- "https://dmr.bsu.edu/digital/bl/dmwebservices/index.php?q="
+
+# 1. the list of items in the collection
+items <- fromJSON(paste0(dmr_api, "dmQuery/MuncieLGBTQOH/0/title/title/1024/1/0/0/0/0/json"))$records
+
+# 2. each item's record, with the transcript in the "full" field
+text_or_empty <- function(value) if (is.character(value)) value else ""   # empty fields come back as {}
+
+oral_histories <- tibble()
+for (pointer in items$pointer) {
+  record <- fromJSON(paste0(dmr_api, "dmGetItemInfo/MuncieLGBTQOH/", pointer, "/json"))
+  oral_histories <- bind_rows(oral_histories, tibble(
+    pointer     = pointer,
+    title       = text_or_empty(record$title),
+    interviewee = text_or_empty(record$interv),
+    interviewer = text_or_empty(record$creato),
+    date        = text_or_empty(record$date),
+    run_time    = text_or_empty(record$run),
+    subjects    = text_or_empty(record$subjec),
+    geography   = text_or_empty(record$geogra),
+    rights      = text_or_empty(record$rights),
+    item_url    = paste0("https://dmr.bsu.edu/digital/collection/MuncieLGBTQOH/id/", pointer),
+    full        = text_or_empty(record$full)
+  ))
+  Sys.sleep(1)   # be polite to the DMR
+}
+
+oral_histories <- oral_histories %>% filter(full != "")   # the two video-only interviews have no transcript
+write_csv(oral_histories, oral_file)
+```
+
+Now read the file:
+
+```{r}
+#| label: read-oral-histories
+
+oral_histories <- read_csv(oral_file, show_col_types = FALSE)
+
+oral_histories %>%
+  mutate(words = str_count(full, "\\S+")) %>%
+  select(interviewee, interviewer, date, run_time, words)
+```
+
+## 4. Who is speaking?
+
+Each transcript marks every turn with the speaker's last name: `Abner: Glad to be a part of it.` / `Cieslik: Thank you.` Your question is about what the **narrators** remember, so the counts in Section 7 should use the narrator's words, not the interviewer's questions. (If an interviewer asks "Did you ever go to the Mark III?", that's not a memory.)
+
+The chunk below splits each transcript into lines and decides who speaks each one, automatically:
+
+-   A line that starts with a name and a colon starts a new turn. The name is compared with the interviewee's and the interviewer's last names from the DMR record. Small spelling differences are allowed (the transcripts sometimes have "Grinstad" for Grinstead), using `adist()`, which counts how many letters differ.
+-   A line without a name continues the previous speaker's turn.
+-   Everything before the first turn is the archive's **header** (address, summary, keywords), not speech.
+-   Page numbers and timestamps such as `[1:00]` are dropped.
+
+```{r}
+#| label: speakers
+
+last_name <- function(full_name) str_to_lower(str_trim(str_remove(full_name, ",.*$")))   # "Abner, Robert" -> "abner"
+
+turns <- tibble()
+
+for (i in seq_len(nrow(oral_histories))) {
+  lines <- str_trim(str_split(oral_histories$full[i], "\n")[[1]])
+  lines <- lines[lines != "" &
+                 !str_detect(lines, "^\\d+$") &                     # page numbers
+                 !str_detect(lines, "^\\[\\d+:\\d+(:\\d+)?\\]$")]    # timestamps like [1:00]
+
+  narrator    <- last_name(oral_histories$interviewee[i])
+  interviewer <- last_name(oral_histories$interviewer[i])
+
+  label     <- str_match(lines, "^([A-Z][A-Za-z.'\\- ]{0,30}):\\s")[, 2]   # "Abner" in "Abner: ..."
+  label_end <- str_to_lower(word(label, -1))                               # last word: "Sara Collas" -> "collas"
+
+  speaker <- case_when(
+    is.na(label)                                                        ~ NA_character_,
+    adist(label_end, narrator)[, 1] <= 2 & adist(label_end, interviewer)[, 1] > 2 ~ "narrator",
+    adist(label_end, interviewer)[, 1] <= 2                             ~ "interviewer",
+    TRUE                                                                ~ NA_character_
+  )
+
+  started <- cumsum(!is.na(speaker)) > 0              # has the first turn begun?
+  for (j in seq_along(speaker)) {                     # lines without a name continue the last turn
+    if (is.na(speaker[j]) && j > 1) speaker[j] <- speaker[j - 1]
+  }
+  speaker[!started] <- "header"
+
+  text <- if_else(!is.na(label) & speaker != "header", str_remove(lines, "^[^:]{1,32}:\\s"), lines)
+
+  turns <- bind_rows(turns, tibble(
+    interviewee = oral_histories$interviewee[i],
+    line        = seq_along(lines),
+    speaker     = speaker,
+    text        = text
+  ))
+}
+
+turns %>% count(speaker)
+```
+
+### Check the result, without reading every line
+
+This table shows what share of each interview's words went to each speaker. When I ran it, narrators had 63% to 96% of the words, interviewers 4% to 32%, and the header 1% to 4%, with nothing left unassigned. Look for an interview that's very different from the others: a narrator with almost nothing, or an interviewer with most of the words, would mean the names didn't match.
+
+```{r}
+#| label: speaker-check
+
+turns %>%
+  mutate(words = str_count(text, "\\S+")) %>%
+  group_by(interviewee, speaker) %>%
+  summarize(words = sum(words), .groups = "drop") %>%
+  group_by(interviewee) %>%
+  mutate(percent = round(100 * words / sum(words), 1)) %>%
+  select(-words) %>%
+  pivot_wider(names_from = speaker, values_from = percent, values_fill = 0)
+```
+
+The matching isn't perfect: in a couple of interviews a third person speaks once (a line labeled "Both," for example), and that line goes to whoever spoke before. A handful of lines out of thousands won't change your counts. Say in your methods section that speakers were assigned automatically from the transcripts' labels.
+
+Now put each narrator's words together, one row per interview:
+
+```{r}
+#| label: narrator-text
+
+narrator_text <- turns %>%
+  filter(speaker == "narrator") %>%
+  group_by(interviewee) %>%
+  summarize(text = paste(text, collapse = " "), .groups = "drop") %>%
+  left_join(oral_histories %>% select(interviewee, interviewer, date, item_url), by = "interviewee")
+
+narrator_text %>% mutate(words = str_count(text, "\\S+")) %>% select(interviewee, date, words)
+```
+
+## 5. The advertised landscape: Muncie in the gay guides
+
+Download the full MGG dataset once (about 46 MB), and keep the Muncie listings. If the file is already saved, the chunk reads it instead.
+
+```{r}
+#| label: mgg-download
+
+if (!file.exists(mgg_file)) {
+  download.file(mgg_url, mgg_file, mode = "wb")
+}
+
+mgg <- read_csv(mgg_file, col_types = cols(.default = "c"), name_repair = "minimal") %>%   # every column as text first
+  select(-1) %>%                                                    # the first column is just a row number
+  mutate(Year = as.integer(Year))
+nrow(mgg)   # all listings, all years, all states
+```
+
+Each row is one listing in one year's guide. Keep Muncie, and check the coordinates: MGG marks listings it couldn't place exactly ("Location could not be verified"), and a listing far outside Muncie means the geocoder found the wrong place.
+
+```{r}
+#| label: mgg-muncie
+
+muncie_listings <- mgg %>%
+  filter(str_detect(city, regex("muncie", ignore_case = TRUE))) %>%
+  mutate(lat = as.numeric(lat),
+         lon = as.numeric(lon),
+         title = coalesce(title, str_trim(description)),   # one cruising area has no name, only a description
+         title = str_remove_all(title, "^'|'$"),             # the guide sometimes puts names in quotes
+         in_muncie = lat > 40.1 & lat < 40.3 & lon > -85.5 & lon < -85.3,
+         exact = !str_detect(replace_na(status, ""), "could not be verified")) %>%
+  select(Year, title, description, streetaddress, type, amenityfeatures, city, lat, lon, status, in_muncie, exact)
+
+write_csv(muncie_listings, file.path(datadir, "mgg-muncie.csv"))
+
+nrow(muncie_listings)
+```
+
+```{r}
+muncie_listings %>% count(Year) %>% summarize(years = n(), first = min(Year), last = max(Year))
+```
+
+```{r}
+muncie_listings %>% filter(!in_muncie | !exact) %>% distinct(title, streetaddress, status)
+```
+
+The listings in the last table won't be placed on the map in Section 10: either the guide gave no exact address, or the coordinates point outside Muncie.
+
+### How did the guide's Muncie change?
+
+The guide's categories changed names over the years ("Bars/Clubs," then "Bars"; "Cruising Areas," then "Cruisy Areas"). Group them into a few kinds first:
+
+```{r}
+#| label: mgg-kinds
+
+muncie_listings <- muncie_listings %>%
+  mutate(kind = case_when(
+    str_detect(type, "Bar|Club") ~ "Bars and clubs",
+    str_detect(type, "Cruis")    ~ "Cruising areas",
+    str_detect(type, "Book|Erotic|Publication") ~ "Bookstores",
+    TRUE                         ~ "Other (restaurants, cafes, services)"
+  ))
+
+muncie_listings %>% count(kind, type)
+```
+
+```{r}
+#| label: mgg-chart
+#| fig-width: 10
+#| fig-height: 4.5
+
+listings_chart <- muncie_listings %>%
+  count(Year, kind) %>%
+  ggplot(aes(x = Year, y = n, fill = kind)) +
+  geom_col() +
+  labs(title = "Muncie in Bob Damron's Address Book, 1965-2003",
+       subtitle = "Listings in each year's guide",
+       x = NULL, y = "Listings", fill = NULL,
+       caption = "Source: Mapping the Gay Guides (Regan and Gonzaba).") +
+  theme_minimal()
+
+ggsave(file.path(outdir, "mgg-listings-by-year.png"), listings_chart, width = 10, height = 4.5, bg = "white")
+listings_chart
+```
+
+And a timeline: for each place, the first and last year the guide listed it. The guide spells some names differently from year to year ("Mark III" and "Mark III Tap Room," "Carriage Hosue," "Rest Stop" and "Rest Area"), so give each place one name first. If you find another spelling, add a line.
+
+```{r}
+#| label: mgg-timeline
+#| fig-width: 10
+#| fig-height: 6
+
+muncie_listings <- muncie_listings %>%
+  mutate(place = case_when(
+    str_detect(title, regex("mark iii", ignore_case = TRUE))        ~ "Mark III Tap Room",
+    str_detect(title, regex("carriage", ignore_case = TRUE))        ~ "Carriage House",
+    str_detect(title, regex("rest (stop|area)", ignore_case = TRUE)) ~ "Rest area (Ind. 36)",
+    str_detect(title, regex("ball state", ignore_case = TRUE))      ~ "Ball State University",
+    str_detect(title, regex("broadway", ignore_case = TRUE))        ~ "Broadway (past the Muncie Mall)",
+    TRUE                                                            ~ title
+  ))
+
+place_years <- muncie_listings %>%
+  group_by(place) %>%
+  summarize(kind = paste(sort(unique(kind)), collapse = " + "),   # a few places changed category
+            first = min(Year), last = max(Year), years_listed = n_distinct(Year), .groups = "drop") %>%
+  arrange(first)
+
+place_years
+```
+
+```{r}
+timeline_chart <- ggplot(place_years, aes(y = reorder(place, -first), color = kind)) +
+  geom_segment(aes(x = first, xend = last + 1, yend = reorder(place, -first)), linewidth = 4) +   # + 1 so a one-year listing still shows
+  labs(title = "How long each Muncie place appeared in the guide",
+       x = NULL, y = NULL, color = NULL,
+       caption = "Source: Mapping the Gay Guides. A gap in listings is not shown.") +
+  theme_minimal()
+
+ggsave(file.path(outdir, "mgg-timeline.png"), timeline_chart, width = 10, height = 6, bg = "white")
+timeline_chart
+```
+
+Which places lasted? When did the 1960s bars disappear, and what replaced them? Read MGG's methodology on the categories: what did the guide mean by its labels?
+
+>
+
+## 6. Your place list
+
+Now the remembered landscape. Instead of asking a computer model to find places in the transcripts (named entity recognition doesn't work well on conversation: people say "the bar" or "that church downtown"), you'll search for a **list of places you control**. Searching for a word list is a method you already know from class.
+
+The starter list has three kinds of places:
+
+-   **Places the guide listed in Muncie** (Section 5).
+-   **Places the archivists named** in the interviews' subject headings and keywords.
+-   **Generic place words** ("bar," "downtown," "campus," "church"), to catch places narrators describe without naming.
+
+Each place has a **pattern** (`|` means "or"). `(?i)` at the start means "ignore capital letters." A pattern without it must match the capitals exactly: `Spectrum` (the Ball State group) shouldn't match "the spectrum of gender." **This is your list: add, remove and fix patterns as you read.** `query` is what the geocoder will search for in Section 10.
+
+```{r}
+#| label: place-list
+
+place_list <- tribble(
+  ~place,                         ~kind,      ~pattern,                                     ~query,
+  # places the guide listed
+  "Mark III Tap Room",            "named",    "(?i)mark (iii|3|three)\\b",                   "107 E Main St, Muncie, Indiana",
+  "Carriage House",               "named",    "(?i)carriage house",                          "1100 Kilgore Ave, Muncie, Indiana",
+  "Alcazar",                      "named",    "(?i)alcazar",                                 "117 W Main St, Muncie, Indiana",
+  "Delaware Hotel",               "named",    "(?i)delaware hotel",                          "206 S Mulberry St, Muncie, Indiana",
+  "Pastime",                      "named",    "(?i)\\bpastime\\b",                            "513 S Walnut St, Muncie, Indiana",
+  "Way II",                       "named",    "(?i)\\bway (ii|2|two)\\b",                     "110 W Howard St, Muncie, Indiana",
+  "Walnut Plaza News",            "named",    "(?i)walnut plaza",                            "102 S Walnut St, Muncie, Indiana",
+  "Grace Episcopal Church",       "named",    "(?i)grace (episcopal )?church|live (and|&) let live", "300 S Madison St, Muncie, Indiana",
+  "McCulloch Park",               "named",    "(?i)mcculloch",                               "McCulloch Park, Muncie, Indiana",
+  "Ball State Student Center",    "named",    "(?i)student (center|centre|ctr)",                     "Student Center, Ball State University, Muncie, Indiana",
+  "Confetti's",                   "named",    "(?i)confetti",                                "700 W Nichols Ave, Muncie, Indiana",
+  "The MT Cup",                   "named",    "(?i)\\bmt cup|empty cup",                      "1606 W University Ave, Muncie, Indiana",
+  # places the archivists named
+  "Queer Chocolatier",            "named",    "(?i)chocolatier",                             "Queer Chocolatier, Muncie, Indiana",
+  "Fickle Peach",                 "named",    "(?i)fickle peach",                            "Fickle Peach, Muncie, Indiana",
+  "Caffeinery",                   "named",    "(?i)caffeinery",                              "Caffeinery, Muncie, Indiana",
+  "Lutheran Church of the Cross", "named",    "(?i)church of the cross",                     "Lutheran Church of the Cross, Muncie, Indiana",
+  "Grace Village",                "named",    "(?i)grace village",                           "Grace Village, Muncie, Indiana",
+  "First Presbyterian Church",    "named",    "(?i)first presbyterian",                      "First Presbyterian Church, Muncie, Indiana",
+  "Unitarian Universalist Church","named",    "(?i)unitarian",                               "Unitarian Universalist Church, Muncie, Indiana",
+  "St. Francis Catholic Church",  "named",    "St\\.? Francis",                              "St. Francis of Assisi Church, Muncie, Indiana",
+  "Temple Beth-El",               "named",    "Beth[- ]El",                                  "Temple Beth-El, Muncie, Indiana",
+  "Muncie OUTreach",              "named",    "OUTreach|Muncie [Oo]utreach",                 NA,
+  "Spectrum (Ball State)",        "named",    "Spectrum",                                    NA,
+  "Aquarius House",               "named",    "(?i)aquarius",                                NA,
+  "Muncie Public Library",        "named",    "(?i)public library",                          "Kennedy Library, Muncie, Indiana",
+  "Muncie Central High School",   "named",    "(?i)muncie central|central high",             "Muncie Central High School, Muncie, Indiana",
+  "Ball Memorial Hospital",       "named",    "(?i)ball memorial",                           "IU Health Ball Memorial Hospital, Muncie, Indiana",
+  # generic place words
+  "bar(s)",                       "generic",  "(?i)\\bbars?\\b",                              NA,
+  "club(s)",                      "generic",  "(?i)\\bclubs?\\b",                             NA,
+  "downtown",                     "generic",  "(?i)downtown",                                NA,
+  "campus",                       "generic",  "(?i)campus",                                  NA,
+  "church(es)",                   "generic",  "(?i)\\bchurch(es)?\\b",                        NA,
+  "park(s)",                      "generic",  "(?i)\\bparks?\\b",                             NA
+)
+
+place_list %>% count(kind)
+```
+
+Which of these did the **guide** list? Check each pattern against the Muncie listings' names and descriptions, so the answer comes from the data, not from the list's comments:
+
+```{r}
+#| label: in-guide
+
+guide_text <- paste(muncie_listings$title, muncie_listings$description)
+
+place_list$in_guide <- FALSE
+for (k in seq_len(nrow(place_list))) {
+  place_list$in_guide[k] <- any(str_detect(guide_text, place_list$pattern[k]), na.rm = TRUE)
+}
+
+write_csv(place_list, file.path(datadir, "place-list.csv"))
+
+place_list %>% filter(kind == "named") %>% select(place, in_guide)
+```
+
+### Places to add: the archivists' keywords
+
+Most transcripts begin with a list of keywords written by the archivists. This chunk lists every keyword that names a place in Muncie, or a kind of place. Add any that matter to your question to `place_list` above.
+
+```{r}
+#| label: keywords
+
+keywords <- oral_histories %>%
+  mutate(keywords = str_match(full, "(?i)(keywords|key terms):\\s*([^\n]+)")[, 3]) %>%
+  select(interviewee, keywords) %>%
+  separate_rows(keywords, sep = ",\\s*") %>%
+  filter(!is.na(keywords))
+
+keywords %>%
+  filter(str_detect(keywords, regex("muncie|church|bar|cafe|café|park|library|hall|house|center|school|temple", ignore_case = TRUE))) %>%
+  count(keywords, sort = TRUE)
+```
+
+## 7. Count the places in the narrators' words
+
+For each place on your list, count how often each narrator mentions it. Only the narrators' words are counted (Section 4).
+
+```{r}
+#| label: count-places
+
+mentions <- tibble()
+for (k in seq_len(nrow(place_list))) {
+  mentions <- bind_rows(mentions, tibble(
+    place       = place_list$place[k],
+    kind        = place_list$kind[k],
+    in_guide    = place_list$in_guide[k],
+    interviewee = narrator_text$interviewee,
+    n           = str_count(narrator_text$text, place_list$pattern[k])
+  ))
+}
+
+place_totals <- mentions %>%
+  group_by(place, kind, in_guide) %>%
+  summarize(mentions = sum(n), narrators = sum(n > 0), .groups = "drop") %>%
+  arrange(desc(narrators))
+
+write_csv(mentions, file.path(datadir, "place-mentions-by-interview.csv"))
+write_csv(place_totals, file.path(datadir, "place-totals.csv"))
+
+place_totals
+```
+
+`narrators` (how many of the 17 people mention a place) is a better measure than `mentions`: one narrator who talks about her church for an hour can produce dozens of mentions.
+
+Find names that are also ordinary words.
+
+>
+
+## 8. Two landscapes compared
+
+For named places only: did the guide list it, did narrators remember it, or both?
+
+```{r}
+#| label: compare
+#| fig-width: 10
+#| fig-height: 7
+
+compared <- place_totals %>%
+  filter(kind == "named") %>%
+  mutate(landscape = case_when(
+    in_guide & narrators > 0  ~ "Both",
+    in_guide & narrators == 0 ~ "Only in the guide",
+    !in_guide & narrators > 0 ~ "Only in the memories",
+    TRUE                      ~ "Neither (check the pattern)"
+  ))
+
+compared %>% count(landscape)
+
+compare_chart <- ggplot(compared, aes(x = narrators, y = reorder(place, narrators), fill = landscape)) +
+  geom_col(width = 0.6) +
+  geom_point(shape = 21, size = 3) +   # a dot, so places no narrator mentions (0) still show
+  scale_x_continuous(breaks = seq(0, 17, 2)) +
+  labs(title = "REPLACE-ME: your claim, as a sentence",
+       subtitle = "How many of the 17 narrators mention each place, and whether the gay guides listed it",
+       x = "Narrators who mention the place (of 17)", y = NULL, fill = NULL,
+       caption = "Sources: Muncie LGBTQ+ Oral History Project (Ball State University DMR); Mapping the Gay Guides.") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+ggsave(file.path(outdir, "two-landscapes.png"), compare_chart, width = 10, height = 7, bg = "white")
+compare_chart
+```
+
+**Your turn.** Replace the title with your claim, as Chambers does. Which kinds of places are only in the guide, and which only in the memories? What would a traveler need that a local wouldn't, and the other way around?
+
+>
+
+## 9. Read the places in context
+
+In the generic words, "church" includes every church, in Muncie or anywhere; "bar" could be "a bar" in Muncie or in Chicago. Section 9 lets you read them in context.
+
+Counts tell you where to look. Reading tells you what a place meant. `place_in_context()` returns the text around every mention of a pattern in the narrators' words (keyword in context, or KWIC), with the interview it comes from and **the years mentioned in the passage**, which show which decade a memory is about.
+
+```{r}
+#| label: kwic-function
+
+place_in_context <- function(pattern, window = 300) {
+  results <- tibble()
+  for (i in seq_len(nrow(narrator_text))) {
+    text <- narrator_text$text[i]
+    positions <- str_locate_all(text, pattern)[[1]]
+    for (j in seq_len(nrow(positions))) {
+      start <- max(1, positions[j, "start"] - window)
+      end   <- min(str_length(text), positions[j, "end"] + window)
+      passage <- str_sub(text, start, end)
+      years <- str_extract_all(passage, "\\b(19[4-9]\\d|20[0-2]\\d)\\b")[[1]]   # years 1940-2029
+      results <- bind_rows(results, tibble(
+        interviewee = narrator_text$interviewee[i],
+        item_url    = narrator_text$item_url[i],
+        years       = paste(years, collapse = ", "),
+        passage     = passage
+      ))
+    }
+  }
+  results
+}
+```
+
+Try it with the place that's in both landscapes:
+
+```{r}
+#| label: kwic-mark-iii
+
+mark_iii <- place_in_context(place_list$pattern[place_list$place == "Mark III Tap Room"])
+
+mark_iii %>% count(interviewee)
+mark_iii %>% select(interviewee, years) %>% filter(years != "")
+
+write_csv(mark_iii, file.path(rawdir, "passages-mark-iii.csv"))   
+# transcript text: stays in raw/, off GitHub
+```
+
+Open `data/ramon/raw/passages-mark-iii.csv` (in RStudio or Excel) and read the passages. Then change the place and run it again for another one, such as "Queer Chocolatier" or "bar(s)".
+
+### When are narrators remembering?
+
+The years mentioned near each mention of a place give a rough date for each memory. A passage can mention several years, or none.
+
+```{r}
+#| label: memory-decades
+
+decades_for <- function(passages) {
+  passages %>%
+    filter(years != "") %>%
+    separate_rows(years, sep = ", ") %>%
+    mutate(decade = paste0(floor(as.numeric(years) / 10) * 10, "s")) %>%
+    count(decade)
+}
+
+decades_for(mark_iii)
+```
+
+Compare with the guide: the Mark III appears in the guide from 1972 to 2003. Which decades do the narrators remember it from?
+
+**Your turn.** Pick two places, one in both landscapes and one only in the memories. Read their passages and write a few sentences on each: who talks about it, which years, and what it meant to them.
+
+>
+
+## 10. The map: two landscapes
+
+The guide's places already have coordinates. The remembered places need them: `geocode()` sends each `query` from your place list to OpenStreetMap. The results are saved in `data/ramon/place-coordinates.csv`, and only new places are sent the next time.
+
+**Only named places with a `query` are mapped.** Organizations without a fixed public building (Muncie OUTreach, Spectrum) and the generic words are left off.
+
+```{r}
+#| label: geocode
+
+coords_file <- file.path(datadir, "place-coordinates.csv")
+
+if (file.exists(coords_file)) {
+  coords <- read_csv(coords_file, show_col_types = FALSE)
+} else {
+  coords <- tibble(place = character(), query = character(), lat = numeric(), long = numeric(),
+                   manual_lat = numeric(), manual_long = numeric())
+}
+
+to_geocode <- place_list %>%
+  filter(kind == "named", !is.na(query), !(place %in% coords$place)) %>%
+  select(place, query)
+
+if (nrow(to_geocode) > 0) {
+  found <- to_geocode %>%
+    geocode(address = query, method = "osm", lat = lat, long = long) %>%
+    mutate(manual_lat = NA_real_, manual_long = NA_real_)
+  coords <- bind_rows(coords, found)
+  write_csv(coords, coords_file)
+}
+
+coords %>% filter(is.na(lat) & is.na(manual_lat))   
+# places the geocoder couldn't find
+```
+
+For each place the geocoder couldn't find, or found in the wrong spot (check on the map below), look it up on a map and type its coordinates into `manual_lat` and `manual_long` in `data/ramon/place-coordinates.csv`. Manual coordinates win. Some places, such as the Queer Chocolatier, have moved over the years: use the location your narrators describe.
+
+```{r}
+#| label: map
+
+# the guide's places: one point per place, listing the years it appeared
+guide_points <- muncie_listings %>%
+  filter(in_muncie, exact) %>%
+  group_by(place, streetaddress, kind) %>%
+  summarize(lat = first(lat), lon = first(lon),
+            years = paste0(min(Year), "-", max(Year)), .groups = "drop")
+
+# the remembered places: coordinates, and how many narrators mention each one
+remembered_points <- coords %>%
+  mutate(lat = coalesce(manual_lat, lat), long = coalesce(manual_long, long)) %>%
+  filter(!is.na(lat)) %>%
+  left_join(place_totals %>% select(place, narrators, in_guide), by = "place") %>%
+  filter(narrators > 0)
+
+two_landscapes_map <- leaflet() %>%
+  addProviderTiles(providers$Esri.WorldGrayCanvas, group = "Today") %>%   # same base map as Exercise 7
+  addCircleMarkers(data = guide_points, lng = ~lon, lat = ~lat, group = "Advertised (gay guides)",
+                   radius = 6, color = "#6D2E46", fillOpacity = 0.8, stroke = FALSE,
+                   popup = ~paste0("<b>", place, "</b><br>", streetaddress, "<br>",
+                                   kind, "<br>Listed ", years)) %>%
+  addCircleMarkers(data = remembered_points, lng = ~long, lat = ~lat, group = "Remembered (oral histories)",
+                   radius = ~3 + narrators, color = "#2E6B8A", fillOpacity = 0.6, stroke = FALSE,
+                   popup = ~paste0("<b>", place, "</b><br>Mentioned by ", narrators, " of 17 narrators")) %>%
+  addLayersControl(baseGroups = "Today",
+                   overlayGroups = c("Advertised (gay guides)", "Remembered (oral histories)"),
+                   options = layersControlOptions(collapsed = FALSE))
+
+htmlwidgets::saveWidget(two_landscapes_map, file.path(outdir, "two-landscapes-map.html"))
+unlink(file.path(outdir, "two-landscapes-map_files"), recursive = TRUE)
+two_landscapes_map
+```
+
+Inside `leaflet` functions, a `~` in front of a column name means "take this from the table," as in Exercise 7. The size of each blue circle grows with the number of narrators who mention the place. Switch the layers on and off: where do the two landscapes overlap, and where don't they?
+
+>
+
+## 11. Check your work
+
+-   [ ] **Transcripts.** `oral_histories` has 17 rows, and `oral-histories.csv` is in `data/ramon/raw/`.
+-   [ ] **Speakers.** No interview in the speaker check (Section 4) looks very different from the others.
+-   [ ] **Guide listings.** You've read the listings that couldn't be placed (Section 5) and know why.
+-   [ ] **Place list.** You've read passages for every place you count, and fixed patterns that match the wrong thing.
+-   [ ] **Coordinates.** Every remembered place on the map is where your narrators say it was, and no private home is on it.
+-   [ ] **Commit.** This `.qmd` file, the CSV files directly in `data/ramon/`, and everything in `output/ramon/` are committed. **Nothing in `data/ramon/raw/`** is: check the list of changed files in GitHub Desktop before you commit.
+
+## Thinking like a historian about this pipeline
+
+-   **Two kinds of sources, two kinds of silence.** The guide lists what an outsider could advertise to travelers. The oral histories record what 17 people chose to say in 2020–2021, when a student asked them. Neither is "queer Muncie." Your argument is about the difference between them.
+-   **Your place list is an argument.** You decided which places to look for. Places nobody thought to add can't show up in your counts. Report your list (`place-list.csv`), and say how you built it.
+-   **Counting isn't remembering.** A narrator who mentions a bar once in passing and one who describes it for ten minutes count the same in `narrators`. The passages are where the meaning is.
+-   **The transcripts are a transcription.** Someone typed these interviews. Names can be misspelled, and the speaker labels were assigned automatically from that typing.
+-   **Memory has a date, and so does the guide.** Compare places across the same years, or say clearly when you can't.
+
+## Exploratory Data Analysis
+
+### Check the packaging
+
+Peng's first step: before you analyze anything, check how many rows you have and whether that's what you expected.
+
+```{r}
+#| label: eda-packaging
+
+nrow(oral_histories)    # interviews with transcripts
+nrow(turns)             # lines of transcript
+nrow(muncie_listings)   # Muncie listings, all years
+```
+
+### Check your "n"s
+
+Peng's next step: count things, and compare your counts with numbers you know should be true.
+
+Your landmarks: the DMR says the collection has 19 interviews, 2 of them video only. The MGG website lists the guides from 1965 to 2003. Do your numbers match?
+
+```{r}
+#| label: eda-ns
+
+oral_histories %>% count(year = str_sub(date, 1, 4))   # when the interviews were recorded
+range(muncie_listings$Year)                            # first and last guide year
+setdiff(1965:2003, unique(muncie_listings$Year))       # years with no Muncie listing at all
+```
+
+## Sources
+
+-   Muncie LGBTQ+ Oral History Project. Ball State University Libraries, Digital Media Repository. <https://dmr.bsu.edu/digital/collection/MuncieLGBTQOH>.
+-   Amanda Regan and Eric Gonzaba, *Mapping the Gay Guides*. <https://www.mappingthegayguides.org>. Data: <https://github.com/MappingtheGayGuides/MGG-Data>.
+-   Roger D. Peng, *Exploratory Data Analysis with R*, chapter 4, "Exploratory Data Analysis Checklist."
