@@ -161,9 +161,10 @@ ocr_languages <- tribble(
   "Türkiye",      35,       43,       25,        45,       "eng+tur",
   "South Korea",  33,       39,      124,       132,       "eng+kor",
   "Taiwan",       21,       26,      119,       123,       "eng+chi_tra",
-  "Vietnam",       8,       24,      102,       110,       "eng+vie+fra"
+  "Vietnam",       8,       24,      102,       110,       "eng+vie+fra",
+  "Thailand" ,     5,       20,       97,       105,       "eng+tha+chi_tra"
 )
-default_langs <- "eng+tur+kor+vie"   # for photos with no location at all
+default_langs <- "eng+tur+kor+vie+tha"   # for photos with no location at all
 
 dir.create(txtdir, recursive = TRUE, showWarnings = FALSE)
 dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
